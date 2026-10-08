@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المراجعة مع المسيو</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#14213d;--blue:#1d3a8a;--gold:#f5b700;--bg:#f4f6fb;--ok:#16a34a;--bad:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Cairo',Tahoma,Arial,sans-serif;background:var(--bg);color:#1f2937}
+header{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;text-align:center;padding:40px 16px 70px}
+header h1{margin:0;font-size:2rem;font-weight:800}
+header h1 span{color:var(--gold)}
+header p{margin:8px 0 0;opacity:.85}
+main{max-width:640px;margin:-44px auto 40px;padding:0 14px}
+.card{background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(20,33,61,.12);padding:22px}
+label.f{display:block;font-weight:600;margin:14px 0 6px}
+input,select{width:100%;padding:12px 14px;border:2px solid #e5e7eb;border-radius:12px;font:inherit;background:#fff}
+input:focus,select:focus{outline:none;border-color:var(--blue)}
+.grp{display:block;border:2px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:10px;cursor:pointer;position:relative}
+.grp input{width:auto;margin-left:8px}
+.grp.sel{border-color:var(--blue);background:#eef2ff}
+.grp b{font-size:1.05rem}
+.grp ul{margin:8px 0 0;padding-right:20px;font-size:.95rem}
+.tbd{color:#92400e}
+.note{background:#fffbeb;border:1px solid var(--gold);border-radius:12px;padding:12px;margin-top:16px;font-size:.92rem}
+button.go{width:100%;margin-top:18px;padding:14px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--gold),#ffcf40);color:var(--navy);font:800 1.1rem 'Cairo',sans-serif;cursor:pointer}
+button.go:disabled{opacity:.6}
+.msg{margin-top:12px;color:var(--bad);font-weight:600}
+.done{text-align:center}
+.done h2{color:var(--ok)}
+.wa{display:inline-block;margin-top:10px;background:#25d366;color:#fff;text-decoration:none;padding:14px 26px;border-radius:12px;font-weight:800}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>المراجعة مع <span>المسيو</span></h1>
+  <p>سجّل بياناتك واختار الميعاد المناسب ليك</p>
+</header>
+<main>
+<div class="card" id="formCard">
+  <form id="bookingForm">
+      <label class="f">اسم الطالب (ثلاثي)</label>
+      <input id="name" name="name" placeholder="الاسم بالكامل" required>
+      
+      <label class="f">رقم تليفون الطالب</label>
+      <input id="phone" name="phone" type="tel" inputmode="numeric" placeholder="01xxxxxxxxx" required>
+      
+      <label class="f">رقم تليفون ولي الأمر</label>
+      <input id="parent" name="parent" type="tel" inputmode="numeric" placeholder="01xxxxxxxxx" required>
+      
+      <label class="f">المرحلة</label>
+      <select id="grade" name="grade" required><option value="">اختار المرحلة</option></select>
+      
+      <div id="groups"></div>
+      
+      <!-- حقول مخفية لإرسال البيانات الإضافية -->
+      <input type="hidden" id="group_name" name="group">
+      <input type="hidden" id="slots_info" name="slots">
+      
+      <div class="note">📌 لتأكيد الحجز: ابعت صورة إيصال الدفع على الواتساب <b dir="ltr">01207829915</b> بعد التسجيل.</div>
+      <div class="msg" id="err"></div>
+      <button type="submit" class="go" id="send">تسجيل الحجز</button>
+  </form>
+</div>
+<div class="card done hide" id="doneCard">
+  <h2>✅ تم تسجيل بياناتك</h2>
+  <p id="doneTxt"></p>
+  <div class="note" style="text-align:right"><b>مواعيد الحصص:</b><ul id="sched"></ul></div>
+  <p><b>الحجز مش مؤكد غير بعد إرسال صورة إيصال الدفع</b></p>
+  <a class="wa" id="waBtn" target="_blank" rel="noopener">إرسال الإيصال على الواتساب</a><br>
+  <a class="wa" style="background:var(--blue)" id="waParent" target="_blank" rel="noopener">📩 أرسل المواعيد لولي الأمر</a><br>
+  <a class="wa" style="background:var(--navy)" id="waStudent" target="_blank" rel="noopener">📩 أرسل المواعيد للطالب</a>
+</div>
+</main>
+<script>
+// تم تغليف الكود لحمايته من أي تعارض مع المنصة
+(function() {
+    // === تم إضافة رابط جوجل الخاص بك هنا بنجاح ===
+    const API_URL = "https://script.google.com/macros/s/AKfycbwNZRuvj04B4r5lRs4eC1X0ZORJ_Ua6VZNr1Rt4G-uwjgSL_fZOOeGcbLFmMMt6iusfcA/exec"; 
+    // =============================================
+
+    const WA = "201207829915";
+    const TBD = "الحصة الثالثة: لم تحدد بعد (تحدد قبل امتحان الشهر)";
+    const TBD2 = "حصة إضافية: لم تحدد بعد (تحدد قبل امتحان الشهر)";
+    const GRADES = {p3:"ثالثة ابتدائي",p4:"رابعة ابتدائي",p5:"خامسة ابتدائي",p6:"سادسة ابتدائي",m1:"أولى إعدادي",m2:"ثانية إعدادي",s1:"أولى ثانوي"};
+    const GROUPS = [
+     {id:"p3",g:"p3",n:"المجموعة",s:["الجمعة 16-10 الساعة 10:30 ص",TBD2]},
+     {id:"p4",g:"p4",n:"المجموعة",s:["الجمعة 16-10 الساعة 11:30 ص",TBD2]},
+     {id:"p5",g:"p5",n:"المجموعة",s:["الجمعة 16-10 الساعة 12:30 م",TBD2]},
+     {id:"p6",g:"p6",n:"المجموعة",s:["الجمعة 16-10 الساعة 1:30 م",TBD2]},
+     {id:"m1a",g:"m1",n:"المجموعة الأولى",s:["الأحد 11-10 الساعة 10 ص","الخميس 15-10 الساعة 4 م",TBD]},
+     {id:"m1b",g:"m1",n:"المجموعة الثانية",s:["الأحد 11-10 الساعة 11 ص","الخميس 15-10 الساعة 7 م",TBD]},
+     {id:"m2a",g:"m2",n:"المجموعة الأولى",s:["الأحد 11-10 الساعة 12 م","الخميس 15-10 الساعة 8 م",TBD]},
+     {id:"m2b",g:"m2",n:"المجموعة الثانية",s:["الأحد 11-10 الساعة 1 م","الخميس 15-10 الساعة 9 م",TBD]},
+     {id:"s1",g:"s1",n:"المجموعة",s:["الأحد 11-10 الساعة 2 م","الجمعة 16-10 الساعة 8 م",TBD]}
+    ];
+
+    function getEl(id) {
+        return document.getElementById(id);
+    }
+
+    let chosen = null;
+    const gs = getEl("grade");
+    
+    if(!gs) return; 
+
+    Object.entries(GRADES).forEach(function(item) {
+        gs.add(new Option(item[1], item[1])); 
+    });
+
+    function render() {
+      chosen = null; 
+      const g_val = gs.value; 
+      const box = getEl("groups"); 
+      
+      if(!box) return;
+      box.innerHTML = "";
+      
+      if(!g_val) return;
+      
+      const g_key = Object.keys(GRADES).find(function(key) { return GRADES[key] === g_val; });
+      const show = GROUPS.filter(function(x) { return x.g === g_key; });
+      
+      if(!show.length){
+          box.innerHTML = '<div class="note">⛔ لا توجد مجموعات متاحة.</div>';
+          return;
+      }
+      
+      show.forEach(function(x) {
+        const l = document.createElement("label"); 
+        l.className = "grp";
+        l.innerHTML = `<input type="radio" name="grp_radio" required><b>${x.n}</b><ul>${x.s.map(t=>`<li class="${t.includes('لم تحدد')?'tbd':''}">${t}</li>`).join("")}</ul>`;
+        
+        l.onclick = function() {
+            chosen = x;
+            document.querySelectorAll(".grp").forEach(function(e) { e.classList.remove("sel"); });
+            l.classList.add("sel");
+            l.querySelector("input").checked = true;
+            
+            getEl("group_name").value = x.n;
+            getEl("slots_info").value = x.s.join(" | ");
+        };
+        box.appendChild(l);
+      });
+      
+      if(show.length === 1) box.firstChild.click();
+    }
+    
+    gs.onchange = render;
+
+    const bookingForm = getEl("bookingForm");
+    if(bookingForm) {
+        bookingForm.onsubmit = function(event) {
+          event.preventDefault(); 
+          
+          const name = getEl("name").value.trim();
+          const ph_input = getEl("phone").value;
+          const pp_input = getEl("parent").value;
+          const er = getEl("err");
+          
+          const dig = function(s) {
+              return s.replace(/[٠-٩]/g, function(d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/\s/g, "");
+          };
+          
+          const ph = dig(ph_input);
+          const pp = dig(pp_input);
+          const ok = /^01[0125]\d{8}$/;
+          
+          er.textContent = "";
+          
+          if(name.split(/\s+/).length < 2) { er.textContent = "اكتب الاسم بالكامل"; return; }
+          if(!ok.test(ph)) { er.textContent = "رقم تليفون الطالب غير صحيح"; return; }
+          if(!ok.test(pp)) { er.textContent = "رقم تليفون ولي الأمر غير صحيح"; return; }
+          if(!chosen) { er.textContent = "اختار المجموعة"; return; }
+          
+          const b = getEl("send"); 
+          b.disabled = true; 
+          b.textContent = "جاري التسجيل...";
+
+          const formData = new FormData(bookingForm);
+
+          fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: formData
+          })
+          .then(function() {
+            getEl("formCard").classList.add("hide"); 
+            getEl("doneCard").classList.remove("hide");
+            
+            getEl("doneTxt").textContent = name + " — " + gs.value + " — " + chosen.n;
+            const t = "السلام عليكم، أنا " + name + " (" + gs.value + " - " + chosen.n + "). مرفق صورة إيصال الدفع لتأكيد الحجز.";
+            getEl("waBtn").href = "https://wa.me/" + WA + "?text=" + encodeURIComponent(t);
+            getEl("sched").innerHTML = chosen.s.map(function(x) { return "<li>" + x + "</li>"; }).join("");
+            
+            const m = "تم حجز " + name + " (" + gs.value + " - " + chosen.n + ") في المراجعة مع المسيو.\nمواعيد الحصص:\n- " + chosen.s.join("\n- ") + "\nلتأكيد الحجز ابعت صورة إيصال الدفع على 01207829915.";
+            const wl = function(n) { return "https://wa.me/2" + n + "?text=" + encodeURIComponent(m); };
+            
+            getEl("waParent").href = wl(pp); 
+            getEl("waStudent").href = wl(ph);
+          })
+          .catch(function(error) {
+            er.textContent = "حدث خطأ في الاتصال، يرجى المحاولة لاحقاً.";
+            b.disabled = false;
+            b.textContent = "تسجيل الحجز";
+          });
+        };
+    }
+    
+    render();
+})();
+</script>
+</body>
+</html>
