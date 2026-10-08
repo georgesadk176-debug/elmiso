@@ -41,7 +41,8 @@ button.go:disabled{opacity:.6}
 </header>
 <main>
 <div class="card" id="formCard">
-  <form id="bookingForm">
+  <!-- تم وضع رابطك هنا بنجاح -->
+  <form id="bookingForm" method="POST" action="https://script.google.com/macros/s/AKfycbxUxd8zfIWGT0dIjMqDNAaUMHbZypBga_yPV1CL-LDCF34d1SNYx6TCdawNnE1pHCF6dw/exec">
       <label class="f">اسم الطالب (ثلاثي)</label>
       <input id="name" name="name" placeholder="الاسم بالكامل" required>
       
@@ -56,7 +57,6 @@ button.go:disabled{opacity:.6}
       
       <div id="groups"></div>
       
-      <!-- حقول مخفية لإرسال البيانات الإضافية -->
       <input type="hidden" id="group_name" name="group">
       <input type="hidden" id="slots_info" name="slots">
       
@@ -65,6 +65,7 @@ button.go:disabled{opacity:.6}
       <button type="submit" class="go" id="send">تسجيل الحجز</button>
   </form>
 </div>
+
 <div class="card done hide" id="doneCard">
   <h2>✅ تم تسجيل بياناتك</h2>
   <p id="doneTxt"></p>
@@ -76,12 +77,7 @@ button.go:disabled{opacity:.6}
 </div>
 </main>
 <script>
-// تم تغليف الكود لحمايته من أي تعارض مع المنصة
 (function() {
-    // === تم إضافة رابط جوجل الخاص بك هنا بنجاح ===
-    const API_URL = "https://script.google.com/macros/s/AKfycbxBQ7EOsLc5KbZTzJdYkb4RAprYc_RQAm3lrNwc5x8Wsnni6CRmkn22oBqo_FwCxA21_g/exec"; 
-    // =============================================
-
     const WA = "201207829915";
     const TBD = "الحصة الثالثة: لم تحدد بعد (تحدد قبل امتحان الشهر)";
     const TBD2 = "حصة إضافية: لم تحدد بعد (تحدد قبل امتحان الشهر)";
@@ -98,9 +94,7 @@ button.go:disabled{opacity:.6}
      {id:"s1",g:"s1",n:"المجموعة",s:["الأحد 11-10 الساعة 2 م","الجمعة 16-10 الساعة 8 م",TBD]}
     ];
 
-    function getEl(id) {
-        return document.getElementById(id);
-    }
+    function getEl(id) { return document.getElementById(id); }
 
     let chosen = null;
     const gs = getEl("grade");
@@ -153,8 +147,8 @@ button.go:disabled{opacity:.6}
 
     const bookingForm = getEl("bookingForm");
     if(bookingForm) {
-        bookingForm.onsubmit = function(event) {
-          event.preventDefault(); 
+        bookingForm.addEventListener("submit", function(e) {
+          e.preventDefault();
           
           const name = getEl("name").value.trim();
           const ph_input = getEl("phone").value;
@@ -180,12 +174,14 @@ button.go:disabled{opacity:.6}
           b.disabled = true; 
           b.textContent = "جاري التسجيل...";
 
-          const formData = new FormData(bookingForm);
+          const data = new FormData(bookingForm);
+          const action = bookingForm.action;
 
-          fetch(API_URL, {
+          // الإرسال مع تفعيل no-cors لتجنب أي مشاكل في المتصفح
+          fetch(action, {
             method: 'POST',
             mode: 'no-cors',
-            body: formData
+            body: data
           })
           .then(function() {
             getEl("formCard").classList.add("hide"); 
@@ -203,11 +199,11 @@ button.go:disabled{opacity:.6}
             getEl("waStudent").href = wl(ph);
           })
           .catch(function(error) {
-            er.textContent = "حدث خطأ في الاتصال، يرجى المحاولة لاحقاً.";
-            b.disabled = false;
-            b.textContent = "تسجيل الحجز";
+              er.textContent = "حدث خطأ أثناء الإرسال. تأكد من اتصالك بالإنترنت.";
+              b.disabled = false;
+              b.textContent = "تسجيل الحجز";
           });
-        };
+        });
     }
     
     render();
