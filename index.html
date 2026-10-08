@@ -41,8 +41,7 @@ button.go:disabled{opacity:.6}
 </header>
 <main>
 <div class="card" id="formCard">
-  <!-- تم وضع رابطك هنا بنجاح -->
-  <form id="bookingForm" method="POST" action="https://script.google.com/macros/s/AKfycbxUxd8zfIWGT0dIjMqDNAaUMHbZypBga_yPV1CL-LDCF34d1SNYx6TCdawNnE1pHCF6dw/exec">
+  <form id="bookingForm">
       <label class="f">اسم الطالب (ثلاثي)</label>
       <input id="name" name="name" placeholder="الاسم بالكامل" required>
       
@@ -57,12 +56,9 @@ button.go:disabled{opacity:.6}
       
       <div id="groups"></div>
       
-      <input type="hidden" id="group_name" name="group">
-      <input type="hidden" id="slots_info" name="slots">
-      
       <div class="note">📌 لتأكيد الحجز: ابعت صورة إيصال الدفع على الواتساب <b dir="ltr">01207829915</b> بعد التسجيل.</div>
       <div class="msg" id="err"></div>
-      <button type="submit" class="go" id="send">تسجيل الحجز</button>
+      <button type="button" class="go" id="send">تسجيل الحجز</button>
   </form>
 </div>
 
@@ -78,6 +74,9 @@ button.go:disabled{opacity:.6}
 </main>
 <script>
 (function() {
+    // تم دمج الرابط الجديد هنا
+    const API_URL = "https://script.google.com/macros/s/AKfycbxAd9yIYgKMq9WLr-Duc5hCijajz-SBrUIun-Hl5H-a9Iyo3lB3BPchfzrW10ukY9EzpA/exec"; 
+
     const WA = "201207829915";
     const TBD = "الحصة الثالثة: لم تحدد بعد (تحدد قبل امتحان الشهر)";
     const TBD2 = "حصة إضافية: لم تحدد بعد (تحدد قبل امتحان الشهر)";
@@ -133,9 +132,6 @@ button.go:disabled{opacity:.6}
             document.querySelectorAll(".grp").forEach(function(e) { e.classList.remove("sel"); });
             l.classList.add("sel");
             l.querySelector("input").checked = true;
-            
-            getEl("group_name").value = x.n;
-            getEl("slots_info").value = x.s.join(" | ");
         };
         box.appendChild(l);
       });
@@ -145,9 +141,9 @@ button.go:disabled{opacity:.6}
     
     gs.onchange = render;
 
-    const bookingForm = getEl("bookingForm");
-    if(bookingForm) {
-        bookingForm.addEventListener("submit", function(e) {
+    const btnSend = getEl("send");
+    if(btnSend) {
+        btnSend.onclick = function(e) {
           e.preventDefault();
           
           const name = getEl("name").value.trim();
@@ -170,18 +166,25 @@ button.go:disabled{opacity:.6}
           if(!ok.test(pp)) { er.textContent = "رقم تليفون ولي الأمر غير صحيح"; return; }
           if(!chosen) { er.textContent = "اختار المجموعة"; return; }
           
-          const b = getEl("send"); 
-          b.disabled = true; 
-          b.textContent = "جاري التسجيل...";
+          btnSend.disabled = true; 
+          btnSend.textContent = "جاري التسجيل...";
 
-          const data = new FormData(bookingForm);
-          const action = bookingForm.action;
+          const dataObj = {
+              name: name,
+              phone: ph,
+              parent: pp,
+              grade: gs.value,
+              group: chosen.n,
+              slots: chosen.s.join(" | ")
+          };
 
-          // الإرسال مع تفعيل no-cors لتجنب أي مشاكل في المتصفح
-          fetch(action, {
+          fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
-            body: data
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dataObj)
           })
           .then(function() {
             getEl("formCard").classList.add("hide"); 
@@ -200,10 +203,10 @@ button.go:disabled{opacity:.6}
           })
           .catch(function(error) {
               er.textContent = "حدث خطأ أثناء الإرسال. تأكد من اتصالك بالإنترنت.";
-              b.disabled = false;
-              b.textContent = "تسجيل الحجز";
+              btnSend.disabled = false;
+              btnSend.textContent = "تسجيل الحجز";
           });
-        });
+        };
     }
     
     render();
